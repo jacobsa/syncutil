@@ -23,9 +23,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jacobsa/gcloud/syncutil"
 	. "github.com/jacobsa/oglematchers"
 	. "github.com/jacobsa/ogletest"
+	"github.com/jacobsa/syncutil"
 	"golang.org/x/net/context"
 )
 
