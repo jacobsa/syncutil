@@ -15,11 +15,16 @@
 package syncutil
 
 import (
-	"flag"
 	"sync"
+	"sync/atomic"
 )
 
-var fCheckInvariants = flag.Bool("syncutil.check_invariants", false, "Crash when registered invariants are violated.")
+var gEnable uintptr
+
+// Enable checking of invariants when locking and unlocking InvariantMutex.
+func EnableInvariantChecking() {
+	atomic.StoreUintptr(&gEnable, 1)
+}
 
 // A sync.Locker that, when enabled, runs a check for registered invariants at
 // times when invariants should hold. This can aid debugging subtle code by
@@ -56,8 +61,8 @@ var fCheckInvariants = flag.Bool("syncutil.check_invariants", false, "Crash when
 //       }
 //     }
 //
-//     // When the flag is set, invariants will be checked at entry to and exit
-//     // from this function.
+//     // When EnableInvariantChecking has been called, invariants will be
+//     // checked at entry to and exit from this function.
 //     func (s *myStruct) setGeneration(n int) {
 //       s.mu.Lock()
 //       defer s.mu.Unlock()
@@ -82,13 +87,13 @@ func (i *InvariantMutex) Unlock() {
 }
 
 func (i *InvariantMutex) checkIfEnabled() {
-	if *fCheckInvariants {
+	if atomic.LoadUintptr(&gEnable) != 0 {
 		i.check()
 	}
 }
 
-// Create a lock which, when the flag --syncutil.check_invariants is set, will
-// call the supplied function at moments when invariants protected by the lock
+// Create a lock which, when EnableInvariantChecking has been called, will call
+// the supplied function at moments when invariants protected by the lock
 // should hold (e.g. just after acquiring the lock). The function should crash
 // if an invariant is violated. It should not have side effects, as there are
 // no guarantees that it will run.
@@ -100,7 +105,7 @@ func NewInvariantMutex(check func()) InvariantMutex {
 	}
 
 	// Check now, if enabled.
-	if *fCheckInvariants {
+	if atomic.LoadUintptr(&gEnable) != 0 {
 		check()
 	}
 
